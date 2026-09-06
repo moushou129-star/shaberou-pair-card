@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>いっしょにしゃべろう！ペアカード生成器</title>
+<style>
+  :root{
+    --bg:#f7f7f2; --card:#ffffff; --ink:#17324d; --muted:#6b7b8d;
+    --line:#dfe7ee; --soft:#eef5f8; --accent:#7fb3c8; --accent2:#e9d7a7;
+    --shadow:0 10px 30px rgba(20,50,70,.08);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI",
+    "Yu Gothic","Noto Sans JP","Noto Sans SC",sans-serif;
+    background:linear-gradient(180deg,#f9faf6,#f3f6f7);color:var(--ink)
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:18px}
+  .hero{padding:14px 4px 20px}
+  .hero h1{font-size:clamp(26px,5vw,46px);margin:0 0 8px;letter-spacing:.02em}
+  .hero p{margin:0;color:var(--muted);line-height:1.7}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow)}
+  .panel h2{font-size:20px;margin:0 0 16px}
+  label{display:block;font-weight:700;margin:14px 0 8px}
+  .sub{font-size:12px;color:var(--muted);font-weight:500;margin-left:6px}
+  input,textarea{
+    width:100%;border:1px solid var(--line);border-radius:14px;padding:13px 14px;
+    font:inherit;color:var(--ink);background:#fbfcfd;outline:none
+  }
+  input:focus,textarea:focus{border-color:#9fc4d3;box-shadow:0 0 0 3px rgba(127,179,200,.15)}
+  textarea{min-height:90px;resize:vertical}
+  .avatars,.chips{display:flex;flex-wrap:wrap;gap:9px}
+  .avatar,.chip{
+    border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 12px;
+    cursor:pointer;user-select:none;transition:.15s
+  }
+  .avatar{font-size:22px;min-width:48px;text-align:center}
+  .avatar.active,.chip.active{background:var(--soft);border-color:#9fc4d3;transform:translateY(-1px)}
+  .hint{font-size:12px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .preview-shell{position:sticky;top:14px}
+  .preview{
+    border-radius:28px;padding:24px;background:linear-gradient(180deg,#fffdf8,#f7fbfd);
+    border:1px solid #e3ebef;box-shadow:var(--shadow);min-height:690px;overflow:hidden;position:relative
+  }
+  .preview:before,.preview:after{
+    content:"";position:absolute;border-radius:50%;filter:blur(0px);opacity:.55;pointer-events:none
+  }
+  .preview:before{width:180px;height:180px;background:#e8f2e2;right:-70px;top:-55px}
+  .preview:after{width:150px;height:150px;background:#f6e9d8;left:-55px;bottom:-45px}
+  .title{font-size:32px;font-weight:900;line-height:1.15;margin:2px 0 4px;position:relative}
+  .subtitle{color:var(--muted);font-size:14px;position:relative}
+  .profile{display:flex;align-items:center;gap:14px;margin:24px 0 18px;position:relative}
+  .big-avatar{
+    width:74px;height:74px;border-radius:22px;background:#eef6f8;display:grid;place-items:center;
+    font-size:42px;border:1px solid #dbe7ec
+  }
+  .nickname{font-size:28px;font-weight:900}
+  .mini{font-size:13px;color:var(--muted);margin-top:2px}
+  .section{background:rgba(255,255,255,.88);border:1px solid #e6edf1;border-radius:18px;padding:14px 15px;margin:12px 0;position:relative}
+  .section h3{font-size:14px;margin:0 0 7px;color:#45627a}
+  .value{font-size:17px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .tagrow{display:flex;flex-wrap:wrap;gap:7px}
+  .tag{background:#eef5f8;border-radius:999px;padding:7px 10px;font-size:14px}
+  .footer{margin-top:18px;font-size:13px;color:#5d7182;position:relative;text-align:center}
+  .actions{display:flex;gap:10px;margin-top:16px}
+  button{
+    flex:1;border:none;border-radius:14px;padding:13px 14px;font:inherit;font-weight:800;cursor:pointer
+  }
+  .primary{background:#17324d;color:white}
+  .secondary{background:#edf3f6;color:#17324d}
+  .privacy{font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px}
+  canvas{display:none}
+  @media(max-width:860px){
+    .grid{grid-template-columns:1fr}
+    .preview-shell{position:static}
+    .preview{min-height:auto}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>いっしょに しゃべろう！</h1>
+    <p>ペアカード生成器｜填写后直接生成图片，发到群里寻找练习搭档。</p>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>填写你的ペアカード</h2>
+
+      <label>头像 <span class="sub">选一个小图标就可以</span></label>
+      <div class="avatars" id="avatars"></div>
+
+      <label>昵称</label>
+      <input id="nickname" maxlength="18" placeholder="例：Aki / 小孟 / Haru" />
+
+      <label>可以练习的时间</label>
+      <textarea id="time" maxlength="90" placeholder="例：周一、周三 20:00以后&#10;周末下午"></textarea>
+
+      <label>兴趣爱好</label>
+      <div class="chips" id="hobbyChips"></div>
+      <input id="hobbyCustom" maxlength="40" placeholder="还可以自己填写，例如：摄影、咖啡、历史" style="margin-top:10px"/>
+
+      <label>工作／学校 <span class="sub">可选</span></label>
+      <input id="work" maxlength="40" placeholder="例：大学生 / 会社員 / 不填写也可以" />
+
+      <label>想聊的话题</label>
+      <div class="chips" id="topicChips"></div>
+      <input id="topicCustom" maxlength="40" placeholder="还可以自己填写其他话题" style="margin-top:10px"/>
+
+      <label>一句话留言</label>
+      <textarea id="message" maxlength="70" placeholder="例：晚上时间比较多，一起轻松练习吧！"></textarea>
+
+      <div class="actions">
+        <button class="secondary" id="resetBtn">清空</button>
+        <button class="primary" id="downloadBtn">生成图片</button>
+      </div>
+      <div class="privacy">不会上传姓名或内容。网页只在你的浏览器中生成卡片图片。</div>
+    </section>
+
+    <section class="panel preview-shell">
+      <h2>实时预览</h2>
+      <div class="preview" id="card">
+        <div class="title">いっしょに しゃべろう！</div>
+        <div class="subtitle">日本語でつながる ペアカード</div>
+
+        <div class="profile">
+          <div class="big-avatar" id="pAvatar">🐱</div>
+          <div>
+            <div class="nickname" id="pNickname">ニックネーム</div>
+            <div class="mini">話せる相手を探しています</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>🕐 練習できる時間</h3>
+          <div class="value" id="pTime">まだ入力されていません</div>
+        </div>
+
+        <div class="section">
+          <h3>♡ 趣味・好きなこと</h3>
+          <div class="tagrow" id="pHobbies"><span class="tag">好きなことを選んでください</span></div>
+        </div>
+
+        <div class="section" id="workSection">
+          <h3>💼 お仕事・学校など</h3>
+          <div class="value" id="pWork">未入力</div>
+        </div>
+
+        <div class="section">
+          <h3>💬 話してみたいこと</h3>
+          <div class="tagrow" id="pTopics"><span class="tag">話したいテーマを選んでください</span></div>
+        </div>
+
+        <div class="section">
+          <h3>★ ひとこと</h3>
+          <div class="value" id="pMessage">いっしょに楽しく話しましょう！</div>
+        </div>
+
+        <div class="footer">ことばで、つながろう。</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<canvas id="canvas" width="1080" height="1350"></canvas>
+
+<script>
+const avatars = ["🐱","🐶","🐰","🐼","🦊","🐻","🐧","🐯","🐸","🦁","🐹","🐨"];
+const hobbyOptions = ["アニメ","ゲーム","旅行","音楽","映画","料理","読書","スポーツ","写真","カフェ"];
+const topicOptions = ["日常生活","日本のこと","旅行","グルメ","アニメ","趣味","学校","仕事","文化"];
+
+let state = { avatar:"🐱", hobbies:new Set(), topics:new Set() };
+
+function buildButtons(containerId, items, kind){
+  const c = document.getElementById(containerId);
+  items.forEach((x,i)=>{
+    const b=document.createElement("div");
+    b.className = kind==="avatar" ? "avatar" : "chip";
+    b.textContent=x;
+    if(kind==="avatar" && i===0) b.classList.add("active");
+    b.onclick=()=>{
+      if(kind==="avatar"){
+        [...c.children].forEach(el=>el.classList.remove("active"));
+        b.classList.add("active"); state.avatar=x;
+      }else{
+        b.classList.toggle("active");
+        const s = kind==="hobby" ? state.hobbies : state.topics;
+        b.classList.contains("active") ? s.add(x) : s.delete(x);
+      }
+      update();
+    };
+    c.appendChild(b);
+  });
+}
+buildButtons("avatars", avatars, "avatar");
+buildButtons("hobbyChips", hobbyOptions, "hobby");
+buildButtons("topicChips", topicOptions, "topic");
+
+["nickname","time","hobbyCustom","work","topicCustom","message"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",update);
+});
+
+function splitCustom(v){
+  return v.split(/[、,，/｜|]/).map(s=>s.trim()).filter(Boolean);
+}
+function renderTags(el, items, placeholder){
+  el.innerHTML="";
+  if(items.length===0){ el.innerHTML='<span class="tag">'+placeholder+'</span>'; return; }
+  items.forEach(t=>{const s=document.createElement("span");s.className="tag";s.textContent="#"+t;el.appendChild(s);});
+}
+function update(){
+  pAvatar.textContent=state.avatar;
+  pNickname.textContent=nickname.value.trim() || "ニックネーム";
+  pTime.textContent=time.value.trim() || "まだ入力されていません";
+  pWork.textContent=work.value.trim() || "未入力";
+  pMessage.textContent=message.value.trim() || "いっしょに楽しく話しましょう！";
+  renderTags(pHobbies,[...state.hobbies,...splitCustom(hobbyCustom.value)],"好きなことを選んでください");
+  renderTags(pTopics,[...state.topics,...splitCustom(topicCustom.value)],"話したいテーマを選んでください");
+}
+
+resetBtn.onclick=()=>{
+  ["nickname","time","hobbyCustom","work","topicCustom","message"].forEach(id=>document.getElementById(id).value="");
+  state={avatar:"🐱",hobbies:new Set(),topics:new Set()};
+  [...avatarsEl.children];
+};
+const avatarsEl=document.getElementById("avatars");
+resetBtn.addEventListener("click",()=>{
+  [...avatarsEl.children].forEach((el,i)=>el.classList.toggle("active",i===0));
+  [...document.getElementById("hobbyChips").children].forEach(el=>el.classList.remove("active"));
+  [...document.getElementById("topicChips").children].forEach(el=>el.classList.remove("active"));
+  update();
+});
+
+function rr(ctx,x,y,w,h,r,fill,stroke){
+  const R=Math.min(r,w/2,h/2); ctx.beginPath();
+  ctx.moveTo(x+R,y); ctx.arcTo(x+w,y,x+w,y+h,R);ctx.arcTo(x+w,y+h,x,y+h,R);
+  ctx.arcTo(x,y+h,x,y,R);ctx.arcTo(x,y,x+w,y,R);
+  if(fill){ctx.fillStyle=fill;ctx.fill()} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}
+}
+function wrapText(ctx,text,x,y,maxWidth,lineHeight,maxLines=4){
+  const chars=[...text]; let line="", lines=[];
+  for(const ch of chars){
+    const test=line+ch;
+    if(ctx.measureText(test).width>maxWidth && line){lines.push(line);line=ch;} else line=test;
+  }
+  if(line)lines.push(line);
+  lines=lines.slice(0,maxLines);
+  lines.forEach((ln,i)=>ctx.fillText(ln,x,y+i*lineHeight));
+  return y+lines.length*lineHeight;
+}
+function drawTagRow(ctx,items,x,y,maxW){
+  let cx=x, cy=y;
+  ctx.font='32px sans-serif';
+  for(const raw of items){
+    const t="#"+raw; const w=ctx.measureText(t).width+34;
+    if(cx+w>x+maxW){cx=x;cy+=58}
+    rr(ctx,cx,cy-38,w,48,24,"#eef5f8");
+    ctx.fillStyle="#17324d";ctx.fillText(t,cx+17,cy-3);
+    cx+=w+12;
+  }
+  return cy+28;
+}
+function getData(){
+  return {
+    avatar:state.avatar,
+    nickname:nickname.value.trim()||"ニックネーム",
+    time:time.value.trim()||"まだ入力されていません",
+    hobbies:[...state.hobbies,...splitCustom(hobbyCustom.value)],
+    work:work.value.trim()||"未入力",
+    topics:[...state.topics,...splitCustom(topicCustom.value)],
+    message:message.value.trim()||"いっしょに楽しく話しましょう！"
+  };
+}
+function generatePNG(){
+  const d=getData(), c=document.getElementById("canvas"),ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  const grad=ctx.createLinearGradient(0,0,0,1350);grad.addColorStop(0,"#fffdf8");grad.addColorStop(1,"#f4fafc");
+  ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1350);
+
+  ctx.fillStyle="#17324d";ctx.font='900 66px sans-serif';ctx.fillText("いっしょに しゃべろう！",70,105);
+  ctx.fillStyle="#6b7b8d";ctx.font='30px sans-serif';ctx.fillText("日本語でつながる ペアカード",74,150);
+
+  rr(ctx,70,195,120,120,34,"#eef6f8","#dbe7ec");
+  ctx.font='74px Apple Color Emoji, Segoe UI Emoji, sans-serif';ctx.fillText(d.avatar,91,282);
+  ctx.fillStyle="#17324d";ctx.font='900 58px sans-serif';ctx.fillText(d.nickname,220,252);
+  ctx.fillStyle="#6b7b8d";ctx.font='28px sans-serif';ctx.fillText("話せる相手を探しています",223,295);
+
+  let y=355;
+  function box(title, drawFn, h){
+    rr(ctx,70,y,940,h,28,"rgba(255,255,255,.92)","#e6edf1");
+    ctx.fillStyle="#45627a";ctx.font='700 31px sans-serif';ctx.fillText(title,100,y+50);
+    drawFn(y);
+    y+=h+22;
+  }
+  box("🕐  練習できる時間",(yy)=>{
+    ctx.fillStyle="#17324d";ctx.font='34px sans-serif';
+    wrapText(ctx,d.time,100,yy+102,860,48,3);
+  },160);
+
+  box("♡  趣味・好きなこと",(yy)=>{
+    drawTagRow(ctx,d.hobbies.length?d.hobbies:["好きなことを選んでください"],100,yy+110,860);
+  },160);
+
+  box("💼  お仕事・学校など",(yy)=>{
+    ctx.fillStyle="#17324d";ctx.font='34px sans-serif';wrapText(ctx,d.work,100,yy+105,860,48,2);
+  },145);
+
+  box("💬  話してみたいこと",(yy)=>{
+    drawTagRow(ctx,d.topics.length?d.topics:["話したいテーマを選んでください"],100,yy+110,860);
+  },160);
+
+  box("★  ひとこと",(yy)=>{
+    ctx.fillStyle="#17324d";ctx.font='34px sans-serif';wrapText(ctx,d.message,100,yy+105,860,48,2);
+  },160);
+
+  ctx.fillStyle="#6b7b8d";ctx.font='28px sans-serif';ctx.textAlign="center";ctx.fillText("ことばで、つながろう。",540,1312);ctx.textAlign="left";
+
+  const link=document.createElement("a");
+  link.download=(d.nickname||"pair-card")+"_ペアカード.png";
+  link.href=c.toDataURL("image/png");
+  link.click();
+}
+downloadBtn.onclick=generatePNG;
+update();
+</script>
+</body>
+</html>
